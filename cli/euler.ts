@@ -14,8 +14,8 @@ class RootCommand extends Command {
 const program = new RootCommand();
 
 program
-  .name('position')
-  .description('CLI to some JavaScript string utilities')
+  .name('euler')
+  .description('CLI to euler smart contracts')
   .version('0.8.0')
 
 // DONE

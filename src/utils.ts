@@ -1,12 +1,11 @@
 import { ethers } from "ethers"
 import { encodeSqrtRatioX96 } from "@uniswap/v3-sdk"
 import { TickMath } from "@uniswap/v3-sdk"
+import KeyManager from "./key-manager";
 
 export default class Utils {
-  static getWallet(privateKey: string | undefined, provider: ethers.providers.JsonRpcProvider | undefined = undefined) {
-    if (!privateKey) {
-      throw new Error('No private key provided')
-    }
+  static async getWallet(provider: ethers.providers.JsonRpcProvider | undefined = undefined) {
+    const privateKey = await KeyManager.getPrivateKey(process.env.PRV_KEY_PATH);
     const wallet = new ethers.Wallet(privateKey, provider)
     return wallet
   }

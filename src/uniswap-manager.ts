@@ -219,15 +219,16 @@ export default class UniswapManager {
   }
 
   static async approve(token: string, network: string) {
+    console.log("Token", token, "Network", network, "Approving Uniswap Position Manager");
     const provider = Utils.getProvider(Networks[network].rpcUrl);
-    const wallet = Utils.getWallet(process.env.PRV_KEY, provider);
-    const connectedWallet = wallet.connect(provider)
+    const wallet = await Utils.getWallet(provider);
     const approvalAmount = ethers.constants.MaxUint256.toString()
     const tokenContract = new ethers.Contract(token, IERC20MetadataABI, provider)
-    await tokenContract.connect(connectedWallet).approve(
+    const transaction = await tokenContract.connect(wallet).approve(
       Networks[network].uniswapNftPositionManager,
       approvalAmount
     )
+    return transaction.hash
   }
 
   static async fetchPosition(positionId: string, network: string): Promise<PositionStatus> {
@@ -249,6 +250,7 @@ export default class UniswapManager {
   }
 
   static async mintPosition(mintRequest: MintRequest, network: string): Promise<string> {
+    console.log("Minting position", mintRequest, "Network", network)
     const provider = new ethers.providers.JsonRpcProvider(Networks[network].rpcUrl);
 
     const nonfungiblePositionManagerContract = new ethers.Contract(
@@ -281,8 +283,7 @@ export default class UniswapManager {
 
     const position = await this.getPosition(poolContract, mintRequest.priceLower, mintRequest.priceUpper, network);
 
-    const wallet = Utils.getWallet(process.env.PRV_KEY);
-    const connectedWallet = wallet.connect(provider);
+    const wallet = await Utils.getWallet(provider);
 
     const { amount0: amount0Desired, amount1: amount1Desired } = position.mintAmounts
     console.log('amounts', token0Addr, amount0Desired.toString(), token1Addr, amount1Desired.toString());
@@ -301,11 +302,7 @@ export default class UniswapManager {
       deadline: Math.floor(Date.now() / 1000) + (60 * 10)
     }
 
-    // TODO - add gas limit estimation
-    const transaction = await nonfungiblePositionManagerContract.connect(connectedWallet).mint(
-      params,
-      { gasLimit: ethers.utils.hexlify(1000000) }
-    );
+    const transaction = await nonfungiblePositionManagerContract.connect(wallet).mint(params);
     console.log(transaction.hash)
     return transaction.hash;
   }
@@ -316,7 +313,6 @@ export default class UniswapManager {
     let result = [];
     for (let i = 0; i < mintRequests.length; i++) {
       const mintRequest = mintRequests[i];
-      console.log("mintRequest", mintRequest);
       const hash = await UniswapManager.mintPosition(mintRequest, network);
       result.push(hash);
     }
@@ -326,7 +322,7 @@ export default class UniswapManager {
   static async removePosition(positionId: string, network: string): Promise<string> {
     console.log('Remove position with id', positionId);
     const provider = new ethers.providers.JsonRpcProvider(Networks[network].rpcUrl);
-    const wallet = Utils.getWallet(process.env.PRV_KEY);
+    const wallet = await Utils.getWallet(provider);
     const nonfungiblePositionManagerContract = new ethers.Contract(
       Networks[network].uniswapNftPositionManager,
       INonfungiblePositionManagerABI,
@@ -359,8 +355,7 @@ export default class UniswapManager {
   static async collectAllFees(tokenId: string, network: string): Promise<string> {
     console.log('Collecting all tokens for position', tokenId);
     const provider = new ethers.providers.JsonRpcProvider(Networks[network].rpcUrl);
-    const wallet = Utils.getWallet(process.env.PRV_KEY);
-    const connectedWallet = wallet.connect(provider);
+    const wallet = await Utils.getWallet(provider);
     const nonfungiblePositionManagerContract = new ethers.Contract(
       Networks[network].uniswapNftPositionManager,
       INonfungiblePositionManagerABI,
@@ -372,10 +367,7 @@ export default class UniswapManager {
       amount0Max: '0xffffffffffffffffffffffffffffffff', // maxUint128
       amount1Max: '0xffffffffffffffffffffffffffffffff',
     }
-    const transaction = await nonfungiblePositionManagerContract.connect(connectedWallet).collect(
-      params,
-      { gasLimit: ethers.utils.hexlify(1000000) }
-    )
+    const transaction = await nonfungiblePositionManagerContract.connect(wallet).collect(params)
     console.log(transaction.hash)
     return transaction.hash
   }
@@ -384,25 +376,20 @@ export default class UniswapManager {
   static async multicall(data: string[], network: string): Promise<string> {
     console.log('Multicall');
     const provider = new ethers.providers.JsonRpcProvider(Networks[network].rpcUrl);
-    const wallet = Utils.getWallet(process.env.PRV_KEY);
-    const connectedWallet = wallet.connect(provider);
+    const wallet = await Utils.getWallet(provider);
     const nonfungiblePositionManagerContract = new ethers.Contract(
       Networks[network].uniswapNftPositionManager,
       IMulticall,
       provider
     );
-    const transaction = await nonfungiblePositionManagerContract.connect(connectedWallet).multicall(
-      data,
-      { gasLimit: ethers.utils.hexlify(1000000) }
-    )
+    const transaction = await nonfungiblePositionManagerContract.connect(wallet).multicall(data)
     console.log(transaction.hash)
     return transaction.hash
   }
 
   static async swap(amount: string, token: string, toToken: string, fee: number, network: string): Promise<string> {
     const provider = new ethers.providers.JsonRpcProvider(Networks[network].rpcUrl);
-    const wallet = Utils.getWallet(process.env.PRV_KEY, provider);
-    const connectedWallet = wallet.connect(provider);
+    const wallet = await Utils.getWallet(provider);
 
     const factoryContract = new ethers.Contract(
       Networks[network].uniswapV3Factory,
@@ -448,12 +435,7 @@ export default class UniswapManager {
       sqrtPriceLimitX96: 0, //ignored
     }
 
-    const transaction = await swapRouterContract.connect(connectedWallet).exactInputSingle(
-      params,
-      {
-        gasLimit: ethers.utils.hexlify(1000000)
-      }
-    )
+    const transaction = await swapRouterContract.connect(wallet).exactInputSingle(params)
     console.log(transaction.hash)
     return transaction.hash
   }

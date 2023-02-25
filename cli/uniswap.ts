@@ -15,7 +15,7 @@ const program = new RootCommand();
 
 program
   .name('uniswap')
-  .description('CLI to some JavaScript string utilities')
+  .description('CLI to uniswap smart contracts')
   .version('0.8.0')
 
 // DONE
@@ -57,4 +57,4 @@ program.command('collect')
     UniswapManager.collectAllFees(tokenId, options.network);
   });
 
-program.parse();
+program.parse();  

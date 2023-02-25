@@ -15,11 +15,10 @@ export default class EulerManager {
       throw new Error('No Euler contract address for network')
     }
     const provider = Utils.getProvider(Networks[network].rpcUrl);
-    const wallet = Utils.getWallet(process.env.PRV_KEY, provider);
-    const connectedWallet = wallet.connect(provider)
+    const wallet = await Utils.getWallet(provider);
     const approvalAmount = ethers.constants.MaxUint256.toString()
     const tokenContract = new ethers.Contract(token, IERC20MetadataABI, provider)
-    const transaction = await tokenContract.connect(connectedWallet).approve(
+    const transaction = await tokenContract.connect(wallet).approve(
       Networks[network].euler,
       approvalAmount
     )
@@ -29,19 +28,34 @@ export default class EulerManager {
 
   static async deposit(amount: string, token: string, network: string): Promise<string> {
     const provider = Utils.getProvider(Networks[network].rpcUrl);
-    const wallet = Utils.getWallet(process.env.PRV_KEY, provider);
+    const wallet = await Utils.getWallet(provider);
     const euler = new Euler(wallet, chainId);
     const eCurrency = await euler.eTokenOf(token)
     const tokenContract = new ethers.Contract(token, IERC20MetadataABI, provider)
     const decimals = await tokenContract.decimals()
-    const transaction = await eCurrency.deposit(0, ethers.utils.parseUnits(amount, decimals))
-    console.log(transaction.hash);
-    return transaction.hash
+
+    const batchItems = [
+      {
+        contract: eCurrency, // eToken contract
+        method: 'deposit', // method name
+        args: [0, ethers.utils.parseUnits(amount, decimals)], // method arguments
+      },
+      {
+        contract: 'markets',
+        method: 'enterMarket',
+        args: [0, token]
+      }
+    ]
+    const tx = await euler.contracts.exec.batchDispatch(euler.buildBatch(batchItems), [])
+    // const receipt = await tx.wait();
+    // console.log(receipt.transactionHash)
+    console.log(tx.hash)
+    return tx.hash
   }
 
   static async mint(amount: string, token: string, network: string): Promise<string> {
     const provider = Utils.getProvider(Networks[network].rpcUrl);
-    const wallet = Utils.getWallet(process.env.PRV_KEY, provider);
+    const wallet = await Utils.getWallet(provider);
     const euler = new Euler(wallet, chainId);
     const eCurrency = await euler.eTokenOf(token)
     const tokenContract = new ethers.Contract(token, IERC20MetadataABI, provider)
@@ -53,7 +67,7 @@ export default class EulerManager {
 
   static async short(amount: string, token: string, toToken: string, fee: number, network: string): Promise<string> {
     const provider = Utils.getProvider(Networks[network].rpcUrl);
-    const wallet = Utils.getWallet(process.env.PRV_KEY, provider);
+    const wallet = await Utils.getWallet(provider);
     const euler = new Euler(wallet, chainId);
 
     const eCurrency = await euler.eTokenOf(token);
@@ -86,8 +100,8 @@ export default class EulerManager {
       }
     ]
     const tx = await euler.contracts.exec.batchDispatch(euler.buildBatch(batchItems), [wallet.address])
-    const receipt = await tx.wait();
-    console.log(receipt.transactionHash)
-    return receipt.transactionHash
+    // const receipt = await tx.wait();
+    console.log(tx.hash)
+    return tx.hash
   }
 }
