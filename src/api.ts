@@ -96,7 +96,8 @@ app.post<{ Body: EulerShortRequest, Querystring: INetworkQuery }>("/euler/short"
   reply.send({hash: hash})
 })
 
-app.listen({ port: 3000 }, async (err, address) => {
+const port = parseInt(process.env.PORT || '3000');
+app.listen({ port: port }, async (err, address) => {
   if (err) {
     console.error(err);
     process.exit(1);
